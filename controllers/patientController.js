@@ -184,3 +184,38 @@ exports.getPacienteById = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener paciente', error: error.message });
   }
 };
+
+exports.buscarPorCarnet = async (req, res) => {
+  // --- LOG 3 ---
+  console.log('--- BE: 3. Controlador (Controller) ---');
+  console.log('Parámetros recibidos (req.params):', req.params);
+  // ---
+  try {
+    // --- ¡CAMBIO AQUÍ! ---
+    // Lee 'carnet_identidad' de req.params, no 'carnet'
+    const { carnet_identidad } = req.params; 
+    // --- FIN DEL CAMBIO ---
+    // --- LOG 4 ---
+    console.log('Valor de "carnet_identidad" extraído:', carnet_identidad);
+    // ---
+
+    if (!carnet_identidad) {
+       return res.status(400).json({ message: 'No se proporcionó carnet' });
+    }
+
+    // Pasa la variable correcta al modelo
+    const paciente = await Paciente.findByCarnet(carnet_identidad); 
+
+    if (!paciente) {
+      onsole.log('BE: Paciente NO encontrado en la DB.');
+      return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+
+    console.log('BE: Paciente SÍ encontrado. Enviando datos.');
+    res.status(200).json(paciente); // Devuelve el paciente (no { data: paciente })
+
+  } catch (error) {
+    console.error("Error en buscarPorCarnet:", error);
+    next(error);
+  }
+};

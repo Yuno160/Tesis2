@@ -48,10 +48,17 @@ class CifCode {
     // 3. Devolver el árbol
     return tree;
   }
+
+  static async getChildren(parentCode) {
+    const [rows] = await db.execute(
+      'SELECT id, codigo, descripcion FROM cif_codes WHERE parent_code = ? ORDER BY codigo',
+      [parentCode]
+    );
+    // Devolvemos solo los campos necesarios para las opciones
+    return rows; 
+  }
   
-  // Aquí podrías añadir otros métodos: getById, create, update, etc.
-  // static async create(newCodeData) { ... }
-  // static async update(id, data) { ... }
+
 }
 
 module.exports = CifCode;

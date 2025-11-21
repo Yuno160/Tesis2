@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; }
+      .header { text-align: center; }
+      .header h1 { margin: 0; }
+      .header p { margin: 5px 0; }
+      .info-paciente { margin-top: 30px; border-collapse: collapse; width: 100%; }
+      .info-paciente th, .info-paciente td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      .info-paciente th { background-color: #f2f2f2; }
+      .seccion-titulo { margin-top: 30px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+      .tabla-diagnosticos { margin-top: 15px; width: 100%; border-collapse: collapse; }
+      .tabla-diagnosticos th, .tabla-diagnosticos td { border: 1px solid #000; padding: 8px; }
+      .tabla-diagnosticos th { background-color: #eee; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Reporte de Paciente</h1>
+      <p>Sistema Experto de Calificación CIF - CEDES Cochabamba</p>
+      <p>Fecha de Emisión: {{fechaEmision}}</p>
+    </div>
+
+    <h2 class="seccion-titulo">Información del Paciente</h2>
+    <table class="info-paciente">
+      <tr>
+        <th>Nombre Completo:</th>
+        <td>{{pacienteNombre}}</td>
+        <th>Cédula (Carnet):</th>
+        <td>{{pacienteCarnet}}</td>
+      </tr>
+      <tr>
+        <th>Teléfono:</th>
+        <td>{{pacienteTelefono}}</td>
+        <th>Dirección:</th>
+        <td>{{pacienteDireccion}}</td>
+      </tr>
+    </table>
+
+    <h2 class="seccion-titulo">Historial de Calificaciones</h2>
+    <table class="tabla-diagnosticos">
+      <thead>
+        <tr>
+          <th>ID Calificación</th>
+          <th>Fecha de Creación</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{filasCalificaciones}}
+      </tbody>
+    </table>
+    </body>
+</html>

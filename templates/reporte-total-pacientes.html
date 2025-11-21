@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; }
+      .header { text-align: center; }
+      .header h1 { margin: 0; }
+      .header p { margin: 5px 0; }
+      .seccion-titulo { margin-top: 30px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+      .tabla-pacientes { margin-top: 15px; width: 100%; border-collapse: collapse; }
+      .tabla-pacientes th, .tabla-pacientes td { border: 1px solid #000; padding: 6px; font-size: 10px; }
+      .tabla-pacientes th { background-color: #eee; }
+      .total { margin-top: 20px; font-weight: bold; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Reporte Total de Pacientes</h1>
+      <p>Sistema Experto de Calificación CIF - CEDES Cochabamba</p>
+      <p>Fecha de Emisión: {{fechaEmision}}</p>
+    </div>
+
+    <h2 class="seccion-titulo">Lista de Pacientes Registrados</h2>
+    <table class="tabla-pacientes">
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Cédula (Carnet)</th>
+          <th>Nombre Completo</th>
+          <th>Teléfono</th>
+          <th>Dirección</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{filasPacientes}}
+      </tbody>
+    </table>
+    
+    <div class="total">
+      Total de Pacientes Registrados: {{totalPacientes}}
+    </div>
+
+  </body>
+</html>

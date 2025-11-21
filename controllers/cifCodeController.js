@@ -21,13 +21,31 @@ const getCifTree = async (req, res) => {
   }
 };
 
-// Aquí añadirías los otros controladores
-// const createCifCode = async (req, res) => { ... }
-// const updateCifCode = async (req, res) => { ... }
+/**
+ * Controlador para obtener los hijos de un código CIF padre.
+ */
+const getChildrenByParentCode = async (req, res) => {
+  try {
+    const { parent_code } = req.params;
 
-// Exportamos las funciones que usarán las rutas
+    // Llama al nuevo método del modelo
+    const children = await CifCode.getChildren(parent_code);
+
+    // Si no se encuentran hijos, devuelve un array vacío (no es un error)
+    res.status(200).json(children);
+
+  } catch (error) {
+    console.error('Error en getChildrenByParentCode:', error);
+    res.status(500).json({ 
+      message: 'Error interno al obtener los hijos del código CIF.',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getCifTree,
+  getChildrenByParentCode
   // createCifCode,
   // updateCifCode,
 };

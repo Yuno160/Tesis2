@@ -1,118 +1,102 @@
-const db = require('../util/database');
+const db = require('../util/database'); 
 
 class Calificacion {
-  
-  /**
-   * Crea un registro de calificación y sus relaciones con cif_codes
-   * usando una transacción de base de datos.
-   */
+
   static async create({ id_paciente, observaciones, codigos }) {
-    
     const connection = await db.getConnection();
 
     try {
-      // 1. Iniciar la transacción
       await connection.beginTransaction();
 
-      // ----- TAREA A: Insertar en la tabla 'calificaciones' -----
+      // ... (Lógica de fecha de vencimiento e INSERT en 'calificaciones' igual que antes) ...
+      const fechaCreacion = new Date();
+      const fechaVencimiento = new Date(fechaCreacion);
+      fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 4);
+      const fechaVencimientoSql = fechaVencimiento.toISOString().split('T')[0];
+
       const [resultCalificacion] = await connection.execute(
-        'INSERT INTO calificaciones (id_paciente, observaciones) VALUES (?, ?)',
-        [id_paciente, observaciones]
+        'INSERT INTO calificaciones (id_paciente, observaciones, fecha_vencimiento) VALUES (?, ?, ?)',
+        [id_paciente, observaciones, fechaVencimientoSql]
       );
-      
       const newCalificacionId = resultCalificacion.insertId;
 
+      // --- AQUÍ EMPIEZA EL DIAGNÓSTICO ---
       
-      // ----- TAREA B: Buscar los IDs (INT) de los códigos -----
-      // (El FE envía ["d4501", "b1670"], pero necesitamos los IDs [5, 12])
-      
-      const placeholders = codigos.map(() => '?').join(','); // Crea '?,?'
-      
-      const [rows] = await connection.execute(
-        `SELECT id FROM cif_codes WHERE codigo IN (${placeholders})`,
-        codigos // Pasa el array ["d4501", "b1670"]
-      );
+      // 1. Extraer códigos base
+      const baseCodigos = codigos.map(codeWithQualifier => {
+         const lastDotIndex = codeWithQualifier.lastIndexOf('.');
+         return lastDotIndex !== -1 ? codeWithQualifier.substring(0, lastDotIndex) : codeWithQualifier;
+      });
 
-      if (rows.length !== codigos.length) {
-        throw new Error('Uno o más códigos CIF enviados no existen en la BD.');
+      // DIAGNÓSTICO 1: ¿Qué códigos base estamos buscando?
+      console.log("--- DEBUG CALIFICACIÓN ---");
+      console.log("1. Códigos enviados por Frontend:", codigos);
+      console.log("2. Códigos BASE a buscar en DB:", baseCodigos);
+
+      // 2. Buscar en la BD
+      if (baseCodigos.length > 0) { // Solo buscamos si hay códigos
+          const placeholders = baseCodigos.map(() => '?').join(',');
+          const [rows] = await connection.execute(
+            `SELECT id, codigo FROM cif_codes WHERE codigo IN (${placeholders})`,
+            baseCodigos
+          );
+
+          // DIAGNÓSTICO 2: ¿Qué encontró la BD?
+          const foundCodes = rows.map(r => r.codigo);
+          console.log("3. Códigos encontrados en cif_codes:", foundCodes);
+
+          // 3. Verificar
+          if (rows.length !== baseCodigos.length) {
+             // Encontramos cuáles faltan
+             const missingCodes = baseCodigos.filter(c => !foundCodes.includes(c));
+             console.error("!!! ERROR: FALTAN ESTOS CÓDIGOS EN LA BD:", missingCodes);
+             
+             throw new Error(`Uno o más códigos CIF base enviados no existen en la BD. Faltan: ${missingCodes.join(', ')}`);
+          }
+
+          // 4. Insertar relaciones (Si todo está bien)
+          const cifCodeIds = rows.map(row => row.id);
+          const junctionData = cifCodeIds.map(cifId => [newCalificacionId, cifId]);
+
+          await connection.query(
+            'INSERT INTO calificacion_cif_codes (calificacion_id, cif_code_id) VALUES ?',
+            [junctionData]
+          );
       }
 
-      // Preparamos los datos para la tabla puente
-      // ej: [[calificacion_id, cif_id], [calificacion_id, cif_id]]
-      const cifCodeIds = rows.map(row => row.id);
-      const junctionData = cifCodeIds.map(cifId => [newCalificacionId, cifId]);
-
-
-      // ----- TAREA C: Insertar en la tabla 'calificacion_cif_codes' -----
-      await connection.query(
-        'INSERT INTO calificacion_cif_codes (calificacion_id, cif_code_id) VALUES ?',
-        [junctionData] // Usamos bulk-insert
-      );
-
-      // 3. Si todo salió bien, confirmar los cambios
       await connection.commit();
-      
-      return {
-        id: newCalificacionId,
-        id_paciente,
-        observaciones,
-        codigos_guardados: codigos 
-      };
+      return { id: newCalificacionId, id_paciente, observaciones, fecha_vencimiento: fechaVencimientoSql, codigos_guardados: codigos };
 
     } catch (error) {
-      // 4. Si algo falló, deshacer TODOS los cambios
       await connection.rollback();
-      console.error('Error en transacción de Calificacion.create:', error);
-      throw error; // Lanza el error al controlador
-
+      console.error('Error en Calificacion.create:', error.message); // Muestra el mensaje detallado
+      throw error;
     } finally {
-      // 5. Devolver la conexión al db
-      connection.release();
+      if (connection) connection.release();
     }
   }
-
-  // --- AÑADE ESTO NUEVO MÉTODO ESTÁTICO ---
-  /**
-   * Busca la calificación MÁS RECIENTE de un paciente y
-   * obtiene todos sus códigos CIF asociados.
-   */
+  
+  // ... (resto del archivo getPorPaciente) ...
   static async getPorPaciente(id_paciente) {
-    
-    // ----- 1. Buscar la última calificación -----
-    // (Buscamos la más reciente por 'fecha_creacion')
-    const [calificacionRows] = await db.execute(
-      `SELECT id, observaciones, fecha_creacion 
-       FROM calificaciones 
-       WHERE id_paciente = ? 
-       ORDER BY fecha_creacion DESC 
-       LIMIT 1`,
-      [id_paciente]
-    );
+      // ... (el código que ya tenías aquí) ...
+      // (Si quieres te lo pego completo, pero es igual al anterior)
+      const [calificacionRows] = await db.execute(
+       `SELECT id, observaciones, fecha_creacion, fecha_vencimiento
+        FROM calificaciones WHERE id_paciente = ? ORDER BY fecha_creacion DESC LIMIT 1`,
+       [id_paciente]
+      );
+      if (calificacionRows.length === 0) return null;
 
-    // Si no hay filas, el paciente no tiene calificación
-    if (calificacionRows.length === 0) {
-      return null; // El controlador devolverá un 404
-    }
+      const calificacionBase = calificacionRows[0];
+      const [codigosRows] = await db.execute(
+       `SELECT cif.codigo, cif.descripcion FROM cif_codes AS cif
+        JOIN calificacion_cif_codes AS jc ON cif.id = jc.cif_code_id
+        WHERE jc.calificacion_id = ? ORDER BY cif.codigo`,
+       [calificacionBase.id]
+      );
 
-    const calificacionBase = calificacionRows[0];
-    const calificacionId = calificacionBase.id;
-
-    // ----- 2. Buscar los códigos CIF asociados a esa calificación -----
-    const [codigosRows] = await db.execute(
-      `SELECT cif.codigo, cif.descripcion
-       FROM cif_codes AS cif
-       JOIN calificacion_cif_codes AS jc ON cif.id = jc.cif_code_id
-       WHERE jc.calificacion_id = ?`,
-      [calificacionId]
-    );
-
-    // 3. Devolver el objeto completo
-    return {
-      ...calificacionBase, // (id, observaciones, fecha_creacion)
-      codigos: codigosRows // (un array de {codigo, descripcion})
-    };
+      return { ...calificacionBase, codigos: codigosRows };
   }
-  // --- FIN DEL NUEVO MÉTODO ---
 }
 
 module.exports = Calificacion;

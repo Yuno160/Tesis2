@@ -16,6 +16,6 @@ router.delete('/delete/:carnet_identidad', pacienteController.deletePatient);
 // GET /api/pacientes/:id (Obtener uno por ID)
 router.get('/id/:id', pacienteController.getPacienteById);
 
-
+router.get('/buscar/:carnet_identidad', pacienteController.buscarPorCarnet);
 
 module.exports = router;

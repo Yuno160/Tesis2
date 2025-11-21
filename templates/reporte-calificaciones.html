@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; }
+      .header { text-align: center; }
+      .header h1 { margin: 0; }
+      .header p { margin: 5px 0; }
+      .seccion-titulo { margin-top: 30px; border-bottom: 2px solid #000; padding-bottom: 5px; font-size: 20px; }
+      .tabla-calificaciones { margin-top: 15px; width: 100%; border-collapse: collapse; }
+      .tabla-calificaciones th, .tabla-calificaciones td { border: 1px solid #000; padding: 6px; font-size: 10px; }
+      .tabla-calificaciones th { background-color: #eee; }
+      .total { margin-top: 20px; font-weight: bold; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Reporte de Calificaciones</h1>
+      <p>Sistema Experto de Calificación CIF - CEDES Cochabamba</p>
+      <p>Fecha de Emisión: {{fechaEmision}}</p>
+    </div>
+
+    <h2 class="seccion-titulo">{{tituloReporte}}</h2>
+    
+    <table class="tabla-calificaciones">
+      <thead>
+        <tr>
+          <th>ID Calificación</th>
+          <th>Fecha Creación</th>
+          <th>Carnet Paciente</th>
+          <th>Nombre Paciente</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{filasCalificaciones}}
+      </tbody>
+    </table>
+    
+    <div class="total">
+      Total de Calificaciones: {{totalCalificaciones}}
+    </div>
+
+  </body>
+</html>

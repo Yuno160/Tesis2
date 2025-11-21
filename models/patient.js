@@ -61,7 +61,14 @@ ORDER BY p.id_paciente DESC`
 
     // En tu modelo Paciente
 static async findByCarnet(carnet) {
+    // --- LOG 5 ---
+    console.log('--- BE: 4. Modelo (Model) ---');
+    console.log('Valor recibido para la consulta SQL:', carnet);
+    // ---
   const [rows] = await db.execute('SELECT * FROM Paciente WHERE carnet_identidad = ?', [carnet]);
+  // --- LOG 6 ---
+    console.log('Resultado de la consulta (filas encontradas):', rows.length);
+    // ---
   return rows[0] || null; // Devuelve el primer registro o null
     }
 
@@ -158,6 +165,8 @@ static async getById(id) {
     // Devuelve el primer resultado, o null si no se encontró
     return rows[0] || null;
   }
+
+
 
 
 };

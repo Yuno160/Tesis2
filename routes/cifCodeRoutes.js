@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Importamos las funciones del controlador
-const { getCifTree } = require('../controllers/cifCodeController');
+const { getCifTree, getChildrenByParentCode } = require('../controllers/cifCodeController');
 
 /**
  * @route   GET /api/cif-codes/tree
@@ -11,8 +11,11 @@ const { getCifTree } = require('../controllers/cifCodeController');
  */
 router.get('/tree', getCifTree);
 
-// Aquí definirías las otras rutas para este modelo
-// router.post('/', createCifCode);
-// router.put('/:id', updateCifCode);
+/**
+ * @route   GET /api/cif-codes/children/:parent_code
+ * @desc    Obtiene los hijos directos de un código padre
+ */
+router.get('/tree/children/:parent_code', getChildrenByParentCode);
+
 
 module.exports = router;
