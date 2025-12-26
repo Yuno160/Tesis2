@@ -6,6 +6,6 @@ const router = express.Router();
 router.get('/', crewController.getAllCrewMembers);
 
 //Ruta para obtener los crews por crewCode
-router.get('/crewcode', crewController.getAllCrewbyCode);
+router.get('/crewcode', crewController.getAllCrewMembers);
 
 module.exports = router;

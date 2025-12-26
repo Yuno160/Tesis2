@@ -1,3 +1,4 @@
+const { iniciarWhatsApp } = require('./services/whatsappServices'); 
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -17,8 +18,12 @@ const carnetRoutes = require('./routes/carnetRoutes');
 const expertoRoutes = require('./routes/expertoRoutes');
 const reporteRoutes = require('./routes/reporteRoutes');
 const reservaRoutes = require('./routes/reservaRoutes');
+const crewsRoutes = require('./routes/crews');
 const authRoutes = require('./routes/auth.routes');
 const usuarioRoutes = require('./routes/usuario.routes'); // <-- Importar
+const documentoRoutes = require('./routes/documentoRoutes');
+const auditorRoutes = require('./routes/auditorRoutes');
+const path = require('path');
 
 // --- CONFIGURACIÓN DE CORS (AQUÍ AL INICIO) ---
 // Esta es la única configuración de CORS que necesitas.
@@ -39,6 +44,8 @@ const puerto = process.env.PORT || 3000;
 
 
 // --- RUTAS ---
+app.use('/api/auditoria', auditorRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/users', usuarioRoutes);
 app.use('/api/pacientes', pacienteRutas);
 app.use('/crews', crewRutas);
@@ -56,10 +63,13 @@ app.use('/api/reportes', reporteRoutes); // <--- Nuestra nueva ruta
 app.use('/api/reservas', reservaRoutes);
 app.use('/api/reportes', reporteRoutes);
 app.use('/api/reservas', reservaRoutes);
+app.use('/api/crews', crewsRoutes);
+app.use('/api/documentos', documentoRoutes);
 app.use('/api/auth', authRoutes);
 
 // --- MANEJO DE ERRORES ---
 app.use(errorController.get404);
 app.use(errorController.get500);
+iniciarWhatsApp();
 
 app.listen(puerto, () => console.log(`Servidor corriendo en el puerto ${puerto}`));

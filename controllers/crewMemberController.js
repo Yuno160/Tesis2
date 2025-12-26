@@ -1,5 +1,5 @@
 // controllers/patientController.js
-const CrewMembers = require('../models/crewMember');
+const CrewMembers = require('../models/crew.model');
 
 // Función para obtener todos los pacientes
 exports.getAllCrewMembers = async (req, res, next) => {

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Vencimientos</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #b71c1c; padding-bottom: 10px; }
+        h1 { margin: 0; color: #b71c1c; font-size: 24px; } /* Rojo tipo "Alerta" */
+        .subtitle { color: #666; margin-top: 5px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #ffebee; color: #b71c1c; } /* Fondo rojizo suave */
+        tr:nth-child(even) { background-color: #fafafa; }
+        
+        .alert-box {
+            background-color: #fff3e0;
+            border-left: 5px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Reporte de Vencimientos de Calificación</h1>
+        <p class="subtitle">Pacientes que requieren renovación en la gestión {{anioActual}}</p>
+        <p style="font-size: 12px; color: #999;">Fecha de Emisión: {{fechaEmision}}</p>
+    </div>
+
+    <div class="alert-box">
+        <strong>Atención:</strong> Se han detectado <strong>{{totalVencimientos}}</strong> calificaciones próximas a vencer. Se recomienda contactar a los pacientes.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha Vencimiento</th>
+                <th>C.I.</th>
+                <th>Paciente</th>
+                <th>Teléfono</th>
+                <th>Grado Actual</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{filasVencimientos}}
+        </tbody>
+    </table>
+
+</body>
+</html>

@@ -1,172 +1,255 @@
 const db = require('../util/database');
 
 module.exports = class Paciente {
-    constructor(id_paciente, nombre, carnet_identidad, edad, telefono, direccion, fecha_registro) {
+    constructor(
+        id_paciente, 
+        nombre, 
+        carnet_identidad, 
+        edad, 
+        telefono, 
+        direccion, 
+        id_zona,                  // <--- 1. NUEVO CAMPO ZONA
+        fecha_registro,
+        genero,                 
+        antecedentes_medicos,     
+        prediccion_ia_grado,      
+        prediccion_ia_confianza,  
+        prediccion_ia_justificacion 
+    ) {
         this.id_paciente = id_paciente;
         this.nombre = nombre;
         this.carnet_identidad = carnet_identidad;
         this.edad = edad;
         this.telefono = telefono;
         this.direccion = direccion;
-        this.edad = edad;
-        this.fecha_registro = fecha_registro
+        this.id_zona = id_zona;   // <--- ASIGNACIÓN
+        this.fecha_registro = fecha_registro;
+        
+        this.genero = genero;
+        this.antecedentes_medicos = antecedentes_medicos;
+        this.prediccion_ia_grado = prediccion_ia_grado;
+        this.prediccion_ia_confianza = prediccion_ia_confianza;
+        this.prediccion_ia_justificacion = prediccion_ia_justificacion;
     }
 
-    
-static getAll() {
-    // Por favor, BORRA la función getAll que tienes
-    // y pégala exactamente así:
-        return db.execute(
-`SELECT 
-    p.*, 
-    EXISTS(
-        SELECT 1 FROM calificaciones c  
-        WHERE c.id_paciente = p.id_paciente
-    ) AS ya_calificado
-FROM paciente p
-ORDER BY p.id_paciente DESC`
-    );
-  }
-
-    // Método para crear un nuevo paciente
-    static create(nombre, carnet_identidad, edad, telefono, direccion, genero, antecedentes_medicos) {
+    // --- OBTENER TODOS (Con JOIN a Zona) ---
+    static getAll() {
         return db.execute(
-            'INSERT INTO Paciente (nombre, carnet_identidad, edad, telefono, direccion, genero, antecedentes_medicos) VALUES (?, ?, ?, ?, ?,?,?)',
-            [nombre, carnet_identidad, edad, telefono, direccion, genero, antecedentes_medicos]
+            `SELECT 
+                p.*, 
+                z.nombre_zona, 
+                EXISTS(
+                    SELECT 1 FROM calificaciones c  
+                    WHERE c.id_paciente = p.id_paciente
+                ) AS ya_calificado
+            FROM paciente p
+            LEFT JOIN zona z ON p.id_zona = z.id_zona
+            ORDER BY p.id_paciente DESC`
+        );
+    }
+
+    // --- CREAR PACIENTE (INSERT con Zona) ---
+    static create(nombre, carnet_identidad, edad, telefono, direccion, id_zona, genero, antecedentes_medicos, ia_grado, ia_confianza, ia_justificacion) {
+        return db.execute(
+            `INSERT INTO paciente (
+                nombre, 
+                carnet_identidad, 
+                edad, 
+                telefono, 
+                direccion, 
+                id_zona,  -- <--- COLUMNA NUEVA
+                genero, 
+                antecedentes_medicos, 
+                fecha_registro,
+                prediccion_ia_grado,
+                prediccion_ia_confianza,
+                prediccion_ia_justificacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`, 
+            [
+                nombre, 
+                carnet_identidad, 
+                edad, 
+                telefono, 
+                direccion, 
+                id_zona,  // <--- VALOR NUEVO
+                genero, 
+                antecedentes_medicos,
+                ia_grado || null,        
+                ia_confianza || null,    
+                ia_justificacion || null 
+            ]
         ); 
     }
 
-    static update(nombre, carnet_identidad, edad, telefono, direccion, genero, idOriginal) {
-        // Verifica si algún campo está vacío o no definido
-        console.log('Nombre:', nombre);
-        console.log('Carnet Nuevo:', carnet_identidad);
-        console.log('Edad:', edad);
-        console.log('Teléfono:', telefono);
-        console.log('Dirección:', direccion);
-        console.log('Género:', genero);
-        console.log('Carnet Original:', idOriginal);
-    
-        if (!nombre || !carnet_identidad || !edad || !telefono || !direccion || !genero) {
-            throw new Error('Todos los campos deben ser proporcionados.');
+    // --- ACTUALIZAR PACIENTE (UPDATE con Zona) ---
+    static update(nombre, carnet_identidad, edad, telefono, direccion, id_zona, genero, antecedentes_medicos, idOriginal) {
+        if (!nombre || !carnet_identidad || !edad || !telefono || !direccion || !id_zona || !genero) {
+            throw new Error('Todos los campos principales deben ser proporcionados.');
         }
     
         return db.execute(
-            `UPDATE Paciente
-             SET nombre = ?, carnet_identidad = ?, edad = ?, telefono = ?, direccion = ?, genero = ?
+            `UPDATE paciente
+             SET nombre = ?, 
+                 carnet_identidad = ?, 
+                 edad = ?, 
+                 telefono = ?, 
+                 direccion = ?, 
+                 id_zona = ?,  -- <--- ACTUALIZAMOS ZONA
+                 genero = ?,
+                 antecedentes_medicos = ?
              WHERE carnet_identidad = ?`,
-            [nombre, carnet_identidad, edad, telefono, direccion, genero, idOriginal]
+            [nombre, carnet_identidad, edad, telefono, direccion, id_zona, genero, antecedentes_medicos, idOriginal]
         );
     }
     
-
-    // En tu modelo Paciente
-static async findByCarnet(carnet) {
-    // --- LOG 5 ---
-    console.log('--- BE: 4. Modelo (Model) ---');
-    console.log('Valor recibido para la consulta SQL:', carnet);
-    // ---
-  const [rows] = await db.execute('SELECT * FROM Paciente WHERE carnet_identidad = ?', [carnet]);
-  // --- LOG 6 ---
-    console.log('Resultado de la consulta (filas encontradas):', rows.length);
-    // ---
-  return rows[0] || null; // Devuelve el primer registro o null
+    // --- BUSCAR POR CARNET ---
+    static async findByCarnet(carnet) {
+        const [rows] = await db.execute('SELECT * FROM paciente WHERE carnet_identidad = ?', [carnet]);
+        return rows[0] || null;
     }
 
-static async delete(carnet_identidad) {
-    const connection = await db.getConnection();
-    
-    try {
-        await connection.beginTransaction();
-
-        // 1. Verificar existencia del paciente
-        const [patientRows] = await connection.execute(
-            `SELECT id_paciente FROM paciente WHERE carnet_identidad = ?`,
-            [carnet_identidad]
+    // --- BUSCAR POR ID ---
+    static async getById(id) {
+        const [rows] = await db.execute(
+            'SELECT * FROM paciente WHERE id_paciente = ?',
+            [id]
         );
+        return rows[0] || null;
+    }
 
-        if (patientRows.length === 0) {
-            await connection.rollback();
-            return {
-                success: false,
-                message: 'Paciente no encontrado',
-                action: 'Verificar el carnet proporcionado'
-            };
-        }
-
-        const id_paciente = patientRows[0].id_paciente;
-
-        // 2. Verificar dependencias
-        const [evaluations] = await connection.execute(
-            `SELECT COUNT(*) AS count FROM evaluacion WHERE id_paciente = ?`,
-            [id_paciente]
+    // --- ACTUALIZAR FOTO ---
+    static async updateFoto(idPaciente, rutaFoto) {
+        return db.execute(
+            'UPDATE paciente SET foto_url = ? WHERE id_paciente = ?',
+            [rutaFoto, idPaciente]
         );
+    }
 
-        const [appointments] = await connection.execute(
-            `SELECT COUNT(*) AS count FROM appointments WHERE id_paciente = ?`,
-            [id_paciente]
-        );
-
-        // 3. Si hay dependencias, retornar error controlado
-        if (evaluations[0].count > 0 || appointments[0].count > 0) {
-            await connection.rollback();
-            return {
-                success: false,
-                message: 'No se puede eliminar el paciente',
-                reason: 'Tiene registros asociados',
-                dependencies: {
-                    evaluaciones: evaluations[0].count,
-                    citas: appointments[0].count
-                },
-                actions: [
-                    'Eliminar primero las evaluaciones/citas manualmente',
-                    'Considerar archivar el paciente'
-                ]
-            };
-        }
-
-        // 4. Si no hay dependencias, proceder con eliminación
-        const [result] = await connection.execute(
-            `DELETE FROM paciente WHERE carnet_identidad = ?`,
-            [carnet_identidad]
-        );
-
-        await connection.commit();
-
-        return {
-            success: true,
-            message: 'Paciente eliminado correctamente',
-            affectedRows: result.affectedRows
-        };
-
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error en delete:', error);
+    // --- ELIMINAR PACIENTE (Transacción Segura) ---
+    static async delete(carnet_identidad) {
+        const connection = await db.getConnection();
         
-        return {
-            success: false,
-            message: 'Error en el servidor',
-            errorDetails: {
-                code: error.code,
-                message: error.message
-            },
-            action: 'Contactar al administrador del sistema'
-        };
-    } finally {
-        connection.release();
+        try {
+            await connection.beginTransaction();
+
+            // 1. Verificar existencia
+            const [patientRows] = await connection.execute(
+                `SELECT id_paciente FROM paciente WHERE carnet_identidad = ?`,
+                [carnet_identidad]
+            );
+
+            if (patientRows.length === 0) {
+                await connection.rollback();
+                return { success: false, message: 'Paciente no encontrado', action: 'Verificar el carnet proporcionado' };
+            }
+
+            const id_paciente = patientRows[0].id_paciente;
+
+            // 2. Verificar dependencias
+            const [evaluations] = await connection.execute(
+                `SELECT COUNT(*) AS count FROM calificaciones WHERE id_paciente = ?`, 
+                [id_paciente]
+            );
+
+            if (evaluations[0].count > 0) {
+                await connection.rollback();
+                return {
+                    success: false,
+                    message: 'No se puede eliminar el paciente',
+                    reason: 'Tiene calificaciones registradas',
+                    dependencies: { evaluaciones: evaluations[0].count },
+                    actions: ['Eliminar primero las calificaciones manualmente']
+                };
+            }
+
+            // 3. Eliminar
+            const [result] = await connection.execute(
+                `DELETE FROM paciente WHERE carnet_identidad = ?`,
+                [carnet_identidad]
+            );
+
+            await connection.commit();
+
+            return { success: true, message: 'Paciente eliminado correctamente', affectedRows: result.affectedRows };
+
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error en delete:', error);
+            return { success: false, message: 'Error en el servidor', errorDetails: { code: error.code, message: error.message }, action: 'Contactar al administrador' };
+        } finally {
+            connection.release();
+        }
     }
-}
 
-static async getById(id) {
-    const [rows] = await db.execute(
-      'SELECT * FROM Paciente WHERE id_paciente = ?',
-      [id]
-    );
+    // --- REPORTE PDF COMPLETO (Relacional) ---
+    static async getPacienteConCalificaciones(idPaciente) {
+        try {
+            // A. Datos Paciente + Zona
+            const [pacienteRows] = await db.execute(
+                `SELECT p.*, z.nombre_zona 
+                 FROM paciente p 
+                 LEFT JOIN zona z ON p.id_zona = z.id_zona 
+                 WHERE p.carnet_identidad = ?`, 
+                [idPaciente]
+            );
+
+            if (pacienteRows.length === 0) return null;
+            const paciente = pacienteRows[0];
+            
+            // Aseguramos ID válido para siguientes consultas
+            const idReal = paciente.id_paciente || paciente.id;
+
+            // B. Cabecera Calificación Médica
+            const [headerRows] = await db.execute(
+                `SELECT id, observaciones, resultado_global, fecha_creacion 
+                 FROM calificaciones 
+                 WHERE id_paciente = ? 
+                 ORDER BY fecha_creacion DESC LIMIT 1`,
+                [idReal]
+            );
     
-    // Devuelve el primer resultado, o null si no se encontró
-    return rows[0] || null;
-  }
+            if (headerRows.length === 0) {
+                paciente.datos_doctor = null;
+                paciente.codigos_cif = [];
+                return paciente;
+            }
+    
+            const cabecera = headerRows[0];
+            paciente.datos_doctor = cabecera; 
+    
+            // C. Detalles Códigos CIF (Join triple + Coalesce)
+            const [detallesRows] = await db.execute(
+                `SELECT 
+                    cif.codigo AS codigo, 
+                    COALESCE(jc.descripcion_especifica, cif.descripcion) AS descripcion_oficial, 
+                    jc.gravedad_especifica, 
+                    cal.resultado_global 
+                 FROM cif_codes AS cif 
+                 JOIN calificacion_cif_codes AS jc ON cif.id = jc.cif_code_id 
+                 JOIN calificaciones AS cal ON jc.calificacion_id = cal.id 
+                 WHERE jc.calificacion_id = ? 
+                 ORDER BY cif.codigo`,
+                [cabecera.id]
+            );
+    
+            paciente.codigos_cif = detallesRows;
+            return paciente;
 
+        } catch (err) {
+            console.error("Error en getPacienteConCalificaciones:", err);
+            throw err;
+        }
+    }
 
-
-
+    // --- LISTAR ZONAS (Para el Combo Box) ---
+    static async getAllZonas() {
+        try {
+            const sql = 'SELECT * FROM zona ORDER BY nombre_zona ASC';
+            const [rows] = await db.execute(sql);
+            return rows;
+        } catch (error) {
+            console.error("Error en modelo getAllZonas:", error);
+            throw error;
+        }
+    }
 };

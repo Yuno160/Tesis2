@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Niveles de Discapacidad</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { text-align: center; color: #333; }
+        .header-info { text-align: right; font-size: 12px; margin-bottom: 20px; color: #666; }
+        .chart-container { width: 50%; margin: 0 auto 30px auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #ffe0b2; } /* Naranjita */
+    </style>
+</head>
+<body>
+
+    <h1>Distribución por Gravedad de Discapacidad</h1>
+    <div class="header-info">
+        Fecha de Emisión: {{fechaEmision}}
+    </div>
+
+    <div class="chart-container">
+        <canvas id="levelChart"></canvas>
+    </div>
+
+    <h3>Detalle de Niveles</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nivel de Gravedad</th>
+                <th>Cantidad de Pacientes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{filasNiveles}}
+        </tbody>
+    </table>
+
+    <script>
+        const labels = {{chartLabels}}; 
+        const dataValues = {{chartData}};
+        const colors = {{chartColors}}; // Recibimos los colores del backend
+
+        const ctx = document.getElementById('levelChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut', 
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pacientes',
+                    data: dataValues,
+                    backgroundColor: colors, // Usamos los colores dinámicos
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

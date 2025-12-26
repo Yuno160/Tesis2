@@ -1,109 +1,155 @@
-// controllers/patientController.js
 const Paciente = require('../models/patient');
 
-// Función para obtener todos los pacientes
-exports.getAllPacientes = async (req, res, next) => {
-     try {
-         // Llama al modelo (que solo tiene el SQL)
-         const [allPacientes] = await Paciente.getAll();
-         res.status(200).json(allPacientes);
-     } catch (err) { // <-- El error del SQL se atrapa aquí
-         
-         // --- ¡AÑADE ESTA LÍNEA AQUÍ! ---
-         console.error('ERROR EN getAllPacientes (controlador):', err);
-         // --------------------------------
+// --- HELPER: Validaciones Reutilizables ---
+const validarDatosPaciente = (data) => {
+    const errores = [];
 
-         if (!err.statusCode) {
-             err.statusCode = 500;
-         }
-         next(err); 
-     }
+    // 1. Sanitización
+    if (data.nombre) data.nombre = data.nombre.trim();
+    if (data.carnet_identidad) data.carnet_identidad = String(data.carnet_identidad).trim();
+    if (data.direccion) data.direccion = data.direccion.trim();
+
+    // 2. Validaciones Obligatorias
+    if (!data.nombre || data.nombre.length < 3) {
+        errores.push("El nombre es obligatorio y debe tener al menos 3 caracteres.");
+    }
+    if (!data.carnet_identidad) {
+        errores.push("El Carnet de Identidad es obligatorio.");
+    }
+    
+    // --- NUEVO: Validar Zona ---
+    if (!data.id_zona) {
+        errores.push("Debes seleccionar una Zona/Provincia.");
+    }
+
+    // 3. Validación Lógica
+    if (data.edad === undefined || data.edad === null || isNaN(data.edad) || data.edad < 0 || data.edad > 120) {
+        errores.push("La edad debe ser un número válido entre 0 y 120.");
+    }
+
+    return { errores, data };
 };
 
-// Función para crear un nuevo paciente
-exports.createPaciente = async (req, res, next) => {
-    console.log('Datos recibidos:', req.body);
-
-    const {
-        nombre,
-        carnet_identidad,
-        edad,
-        telefono = null, // Valor predeterminado
-        direccion = null, // Valor predeterminado
-        genero = null, // Valor predeterminado
-        antecedentes_medicos = null // Valor predeterminado
-    } = req.body;
-
+// 1. OBTENER TODOS
+exports.getAllPacientes = async (req, res, next) => {
     try {
-        const newPaciente = await Paciente.create(nombre, carnet_identidad, edad, telefono, direccion, genero, antecedentes_medicos);
-        res.status(201).json({
-            message: 'Paciente creado con éxito',
-            patient: newPaciente
-        });
+        const [allPacientes] = await Paciente.getAll();
+        res.status(200).json(allPacientes);
     } catch (err) {
-        if (!err.statusCode) {
-            err.statusCode = 500;
-        }
+        console.error('ERROR EN getAllPacientes:', err);
+        if (!err.statusCode) err.statusCode = 500;
         next(err);
     }
 };
 
-
-
-exports.updatePatient = async (req, res, next) => {
-    const originalId = req.params.carnet_identidad;
-    const { nombre, carnet_identidad, edad, telefono, direccion, genero } = req.body;
-
+// 2. CREAR PACIENTE (MODIFICADO CON ZONA)
+exports.createPaciente = async (req, res, next) => {
     try {
-        // 1. Verificar si el paciente existe (forma más robusta)
-        const existingPatient = await Paciente.findByCarnet(originalId);
-        if (!existingPatient || existingPatient.length === 0) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Paciente no encontrado.' 
+        // A. Validar y Sanitizar entrada
+        let { errores, data } = validarDatosPaciente(req.body);
+
+        if (errores.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Error de validación', 
+                errors: errores 
             });
         }
 
-        // 2. Verificar conflicto con nuevo carnet
-        if (carnet_identidad !== originalId) {
-            const conflictingPatient = await Paciente.findByCarnet(carnet_identidad);
-            if (conflictingPatient && conflictingPatient.length > 0) {
-                return res.status(400).json({ 
-                    success: false,
-                    message: 'El número de carnet ya está en uso.' 
-                });
+        // B. Verificar duplicados
+        const existe = await Paciente.findByCarnet(data.carnet_identidad);
+        if (existe) {
+            return res.status(409).json({ 
+                success: false, 
+                message: `El paciente con Carnet ${data.carnet_identidad} ya está registrado.` 
+            });
+        }
+
+        // C. Insertar (Pasamos id_zona en el orden correcto)
+        const [result] = await Paciente.create(
+            data.nombre,
+            data.carnet_identidad,
+            data.edad,
+            data.telefono,
+            data.direccion,
+            data.id_zona, // <--- NUEVO CAMPO AÑADIDO
+            data.genero,
+            data.antecedentes_medicos,
+            // Campos IA
+            req.body.prediccion_ia_grado,
+            req.body.prediccion_ia_confianza,
+            req.body.prediccion_ia_justificacion
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Paciente registrado exitosamente.',
+            pacienteId: result.insertId
+        });
+
+    } catch (err) {
+        console.error('Error al crear paciente:', err);
+        if (!err.statusCode) err.statusCode = 500;
+        next(err);
+    }
+};
+
+// 3. ACTUALIZAR PACIENTE (MODIFICADO CON ZONA)
+exports.updatePatient = async (req, res, next) => {
+    const originalId = req.params.carnet_identidad; 
+
+    try {
+        // A. Validar y Sanitizar entrada
+        let { errores, data } = validarDatosPaciente(req.body);
+        
+        if (errores.length > 0) {
+            return res.status(400).json({ success: false, message: 'Datos inválidos', errors: errores });
+        }
+
+        // B. Verificar existencia
+        const existingPatient = await Paciente.findByCarnet(originalId);
+        if (!existingPatient) {
+            return res.status(404).json({ success: false, message: 'Paciente no encontrado.' });
+        }
+
+        // C. Verificar conflicto de carnet
+        if (data.carnet_identidad !== originalId) {
+            const conflictingPatient = await Paciente.findByCarnet(data.carnet_identidad);
+            if (conflictingPatient) {
+                return res.status(400).json({ success: false, message: `El Carnet ${data.carnet_identidad} ya pertenece a otro paciente.` });
             }
         }
 
-        // 3. Actualizar paciente
+        // D. Actualizar (Pasamos id_zona al modelo)
         const updateResult = await Paciente.update(
-            nombre, carnet_identidad, edad, telefono, direccion, genero, originalId
+            data.nombre, 
+            data.carnet_identidad, 
+            data.edad, 
+            data.telefono, 
+            data.direccion, 
+            data.id_zona, // <--- NUEVO CAMPO AÑADIDO
+            data.genero, 
+            data.antecedentes_medicos,
+            originalId
         );
 
-        if (!updateResult || updateResult.affectedRows === 0) {
-            return res.status(500).json({ 
-                success: false,
-                message: 'No se pudo actualizar el paciente.' 
-            });
+        if (updateResult.affectedRows === 0) {
+            return res.status(500).json({ success: false, message: 'No se realizaron cambios en la base de datos.' });
         }
 
         res.status(200).json({ 
-            success: true,
+            success: true, 
             message: 'Paciente actualizado correctamente.',
-            data: { nombre, carnet_identidad, edad, telefono, direccion, genero }
+            data: data
         });
 
     } catch (err) {
         console.error('Error en updatePatient:', err);
-        res.status(500).json({ 
-            success: false,
-            message: 'Error interno del servidor.',
-            error: err.message 
-        });
+        res.status(500).json({ success: false, message: 'Error interno.', error: err.message });
     }
 };
 
-
+// 4. ELIMINAR PACIENTE
 exports.deletePatient = async (req, res) => {
     try {
         const result = await Paciente.delete(req.params.carnet_identidad);
@@ -114,108 +160,83 @@ exports.deletePatient = async (req, res) => {
 
         res.status(200).json(result);
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error inesperado',
-            error: error.message
+        res.status(500).json({ success: false, message: 'Error inesperado', error: error.message });
+    }
+};
+
+// 5. OBTENER POR CARNET
+exports.getPacienteByCarnet = async (req, res) => {
+    try {
+        const carnet = req.params.carnet || req.params.carnet_identidad;
+        const paciente = await Paciente.findByCarnet(carnet);
+        
+        if (!paciente) {
+            return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+        }
+        
+        res.status(200).json({ success: true, data: paciente });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener paciente', error: error.message });
+    }
+};
+
+// 6. OBTENER POR ID
+exports.getPacienteById = async (req, res) => {
+    try {
+        const paciente = await Paciente.getById(req.params.id);
+        
+        if (!paciente) {
+            return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+        }
+        
+        res.json(paciente);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener paciente', error: error.message });
+    }
+};
+
+// 7. OBTENER ZONAS (Para el Combo Box)
+exports.getZonas = async (req, res) => {
+    try {
+        // Llamamos al Modelo (Abstracción)
+        const listaZonas = await Paciente.getAllZonas();
+        
+        // Respondemos
+        res.status(200).json(listaZonas);
+
+    } catch (error) {
+        console.error("Error en controller getZonas:", error);
+        res.status(500).json({ 
+            message: "Error al cargar la lista de zonas", 
+            error: error.message 
         });
     }
 };
 
-// En tu controlador backend (getPatient)
-exports.getPatient = async (req, res) => {
-  try {
-    const carnet = req.params.carnet_identidad;
-    const patient = await Paciente.findByCarnet(carnet); // Asegúrate que esto devuelva un objeto
-    
-    if (!patient) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Paciente no encontrado' 
-      });
+// 8. ACTUALIZAR FOTO
+exports.actualizarFotoPerfil = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No se envió ninguna imagen.' });
+        }
+
+        const { idPaciente } = req.body;
+        const rutaFoto = req.file.path; 
+
+        await Paciente.updateFoto(idPaciente, rutaFoto);
+
+        res.status(200).json({ 
+            message: 'Foto actualizada correctamente', 
+            foto_url: rutaFoto 
+        });
+
+    } catch (error) {
+        console.error("Error en actualizarFotoPerfil:", error);
+        res.status(500).json({ message: 'Error interno al actualizar la foto' });
     }
-
-    res.status(200).json({
-      success: true,
-      data: patient // Devuelve el objeto paciente directamente
-    });
-
-  } catch (err) {
-    console.error('Error en getPatient:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Error del servidor' 
-    });
-  }
 };
 
-exports.getPacienteByCarnet = async (req, res) => {
-  try {
-    // Usamos la función que YA TENÍAS en tu modelo
-    const paciente = await Paciente.findByCarnet(req.params.carnet);
-    
-    if (!paciente) {
-      return res.status(404).json({ success: false, message: 'Paciente no encontrado con ese carnet' });
-    }
-    
-    // Devuelve el paciente envuelto, igual que tu otra función 'getPatient'
-    res.status(200).json({
-      success: true,
-      data: paciente
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener paciente por carnet', error: error.message });
-  }
-};
-
-// GET /api/pacientes/:id
-exports.getPacienteById = async (req, res) => {
-  try {
-    const paciente = await Paciente.getById(req.params.id);
-    
-    // ¡Esta es la validación clave que te daba el error 404!
-    if (!paciente) {
-      return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
-    }
-    
-    res.json(paciente);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener paciente', error: error.message });
-  }
-};
-
-exports.buscarPorCarnet = async (req, res) => {
-  // --- LOG 3 ---
-  console.log('--- BE: 3. Controlador (Controller) ---');
-  console.log('Parámetros recibidos (req.params):', req.params);
-  // ---
-  try {
-    // --- ¡CAMBIO AQUÍ! ---
-    // Lee 'carnet_identidad' de req.params, no 'carnet'
-    const { carnet_identidad } = req.params; 
-    // --- FIN DEL CAMBIO ---
-    // --- LOG 4 ---
-    console.log('Valor de "carnet_identidad" extraído:', carnet_identidad);
-    // ---
-
-    if (!carnet_identidad) {
-       return res.status(400).json({ message: 'No se proporcionó carnet' });
-    }
-
-    // Pasa la variable correcta al modelo
-    const paciente = await Paciente.findByCarnet(carnet_identidad); 
-
-    if (!paciente) {
-      onsole.log('BE: Paciente NO encontrado en la DB.');
-      return res.status(404).json({ message: 'Paciente no encontrado' });
-    }
-
-    console.log('BE: Paciente SÍ encontrado. Enviando datos.');
-    res.status(200).json(paciente); // Devuelve el paciente (no { data: paciente })
-
-  } catch (error) {
-    console.error("Error en buscarPorCarnet:", error);
-    next(error);
-  }
-};
+// --- MÉTODOS LEGACY (Compatibilidad) ---
+exports.getPatient = exports.getPacienteByCarnet;
+exports.buscarPorCarnet = exports.getPacienteByCarnet;

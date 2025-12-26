@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Zonas</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { text-align: center; color: #333; }
+        .header-info { text-align: right; font-size: 12px; margin-bottom: 20px; color: #666; }
+        
+        /* Contenedor del gráfico para que no sea gigante */
+        .chart-container {
+            width: 60%; 
+            margin: 0 auto 30px auto; /* Centrado */
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <h1>Reporte de Pacientes por Zona</h1>
+    <div class="header-info">
+        Fecha de Emisión: {{fechaEmision}}
+    </div>
+
+    <div class="chart-container">
+        <canvas id="myPieChart"></canvas>
+    </div>
+
+    <h3>Detalle de Datos</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Zona</th>
+                <th>Área</th>
+                <th>Cantidad Pacientes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{filasZonas}}
+        </tbody>
+    </table>
+
+    <script>
+        // Recibimos los datos desde el backend (reemplazo de strings)
+        const labels = {{chartLabels}}; 
+        const dataValues = {{chartData}};
+
+        const ctx = document.getElementById('myPieChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie', // Tipo de gráfico: Pastel
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pacientes',
+                    data: dataValues,
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false, // ¡IMPORTANTE! Desactiva animación para que salga en el PDF
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

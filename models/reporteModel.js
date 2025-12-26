@@ -1,6 +1,5 @@
-// Importa tu db de conexión (¡asegúrate que la ruta sea correcta!)
-// const db = require('../util/database'); // <-- Usa tu ruta de conexión
-const  db  = require('../util/database'); // <-- O si es la que te di yo
+
+const  db  = require('../util/database'); 
 
 class Reporte {
 
@@ -73,6 +72,119 @@ class Reporte {
     );
     return rows;
   }
+
+  static async getDistribucionZonas() {
+    // Esta consulta agrupa por Nombre de Zona y por Área (Urbana/Rural)
+    // Devuelve: Zona, Area, Cantidad
+    const sql = `
+      SELECT 
+        IFNULL(z.nombre_zona, 'Sin Zona Asignada') as zona, 
+        IFNULL(p.area, 'Sin Área') as area, 
+        COUNT(p.id_paciente) as cantidad_pacientes
+      FROM paciente p
+      LEFT JOIN zona z ON p.id_zona = z.id_zona
+      GROUP BY z.nombre_zona, p.area
+      ORDER BY cantidad_pacientes DESC;
+    `;
+    
+    const [rows] = await db.query(sql);
+    return rows;
+  }
+
+static async getDistribucionAreas() {
+    const sql = `
+      SELECT 
+        IFNULL(z.tipo_area, 'Sin Clasificar') as area, 
+        
+        COUNT(p.id_paciente) as cantidad
+      
+      FROM paciente p
+      LEFT JOIN zona z ON p.id_zona = z.id_zona
+      
+      GROUP BY z.tipo_area
+      ORDER BY cantidad DESC;
+    `;
+    
+    try {
+        const [rows] = await db.query(sql);
+        return rows;
+    } catch (error) {
+        console.error("Error en getDistribucionAreas:", error);
+        throw error;
+    }
 }
 
+  static async getProductividadAnual() {
+    const sql = `
+      SELECT 
+        DATE_FORMAT(fecha_creacion, '%Y-%m') as mes_anio, -- Devuelve "2025-10"
+        COUNT(id) as cantidad
+      FROM calificaciones
+      WHERE fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH) -- Solo últimos 12 meses
+      GROUP BY mes_anio
+      ORDER BY mes_anio ASC;
+    `;
+    const [rows] = await db.query(sql);
+    return rows;
+  }
+
+  static async getNivelesDiscapacidad() {
+    const sql = `SELECT 
+    CASE 
+        WHEN UPPER(resultado_global) LIKE 'NINGUN%' THEN 'NINGUNO'
+        WHEN UPPER(resultado_global) LIKE 'LIGER%' THEN 'LIGERO'
+        WHEN UPPER(resultado_global) LIKE 'MODERAD%' THEN 'MODERADO'
+        WHEN UPPER(resultado_global) LIKE 'GRAVE%' THEN 'GRAVE'
+        WHEN UPPER(resultado_global) LIKE 'COMPLET%' THEN 'COMPLETO'
+        ELSE UPPER(resultado_global)
+    END as nivel, 
+    COUNT(id) as cantidad
+FROM calificaciones
+WHERE resultado_global IS NOT NULL 
+  AND resultado_global != ''
+GROUP BY nivel
+ORDER BY FIELD(nivel, 'NINGUNO', 'LIGERO', 'MODERADO', 'GRAVE', 'COMPLETO');`;
+    const [rows] = await db.query(sql);
+    return rows;
+  }
+
+  static async getVencimientosAnuales() {
+    const sql = `
+      SELECT 
+        p.nombre,
+        p.carnet_identidad,
+        p.telefono,
+        c.fecha_vencimiento,
+        c.resultado_global  -- Usamos la columna nueva para mostrar su grado actual
+      FROM calificaciones c
+      JOIN paciente p ON c.id_paciente = p.id_paciente
+      WHERE YEAR(c.fecha_vencimiento) = YEAR(CURDATE()) -- Solo las que vencen este año
+        AND c.fecha_vencimiento >= CURDATE() -- Opcional: Que venzan de hoy en adelante (no las ya vencidas)
+      ORDER BY c.fecha_vencimiento ASC;
+    `;
+    const [rows] = await db.query(sql);
+    return rows;
+  }
+
+  static async getProductividadAnual() {
+    const sql = `
+      SELECT 
+        DATE_FORMAT(fecha_creacion, '%Y-%m') as mes_anio, 
+        COUNT(id) as cantidad
+      FROM calificaciones
+      WHERE fecha_creacion >= DATE_SUB(NOW(), INTERVAL 12 MONTH) -- Solo último año
+      GROUP BY mes_anio
+      ORDER BY mes_anio ASC;
+    `;
+    const [rows] = await db.query(sql);
+    return rows;
+  }
+
+}
+
+
+
+
+
 module.exports = Reporte;
+

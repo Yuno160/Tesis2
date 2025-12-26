@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Áreas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { text-align: center; color: #333; }
+        .header-info { text-align: right; font-size: 12px; margin-bottom: 20px; color: #666; }
+        .chart-container { width: 50%; margin: 0 auto 30px auto; } /* Un poco más pequeño */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #e8f5e9; } /* Color verdecito para el header */
+    </style>
+</head>
+<body>
+
+    <h1>Distribución de Pacientes por Área</h1>
+    <div class="header-info">
+        Fecha de Emisión: {{fechaEmision}}
+    </div>
+
+    <div class="chart-container">
+        <canvas id="areaChart"></canvas>
+    </div>
+
+    <h3>Detalle</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Área Geográfica</th>
+                <th>Cantidad de Pacientes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{filasAreas}}
+        </tbody>
+    </table>
+
+    <script>
+        const labels = {{chartLabels}}; 
+        const dataValues = {{chartData}};
+
+        const ctx = document.getElementById('areaChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut', // Probamos tipo 'Donas' para variar del Pastel normal
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pacientes',
+                    data: dataValues,
+                    backgroundColor: [
+                        '#4BC0C0', // Verde agua (Urbana)
+                        '#FF9F40', // Naranja (Rural)
+                        '#9966FF'  // Otro por si acaso
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

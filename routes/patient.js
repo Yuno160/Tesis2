@@ -1,11 +1,13 @@
 const express = require('express');
 const pacienteController = require('../controllers/patientController');
+const upload = require('../middleware/upload'); // Importa tu middleware de Multer
 const router = express.Router();
+
 
 router.get('/', pacienteController.getAllPacientes);
 
 // Ruta para crear un nuevo paciente
-router.post('/', pacienteController.createPaciente);
+router.post('/crear', pacienteController.createPaciente);
 
 router.put('/edit/:carnet_identidad', pacienteController.updatePatient);
 
@@ -17,5 +19,9 @@ router.delete('/delete/:carnet_identidad', pacienteController.deletePatient);
 router.get('/id/:id', pacienteController.getPacienteById);
 
 router.get('/buscar/:carnet_identidad', pacienteController.buscarPorCarnet);
+
+router.post('/foto', upload.single('archivo'), pacienteController.actualizarFotoPerfil);
+
+router.get('/zonas', pacienteController.getZonas);
 
 module.exports = router;
